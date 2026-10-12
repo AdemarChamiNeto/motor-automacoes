@@ -95,7 +95,11 @@ test("o workspace nunca fica sem owner, nem com dois rebaixamentos ao mesmo temp
     asUser(ana, (c) => c.query("UPDATE workspace_members SET role = 'editor' WHERE user_id = $1", [beto])),
     asUser(beto, (c) => c.query("UPDATE workspace_members SET role = 'editor' WHERE user_id = $1", [ana])),
   ]);
-  assert.equal(results.filter((r) => r.status === "rejected").length, 1);
+  // Duas saídas válidas, conforme o tempo: se as transações se sobrepõem, a trava do trigger barra uma
+  // (erro); se uma termina antes, a outra já não é owner e o RLS nem deixa ver a linha (0 linhas).
+  // Nunca as duas aplicadas.
+  const applied = results.filter((r) => r.status === "fulfilled" && r.value.rowCount === 1).length;
+  assert.equal(applied, 1);
   const owners = (await owner().query("SELECT count(*)::int AS n FROM workspace_members WHERE workspace_id = $1 AND role = 'owner'", [loja])).rows[0].n;
   assert.equal(owners, 1);
 
