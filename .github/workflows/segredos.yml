@@ -1,6 +1,6 @@
 name: Segredos
 
-# Procura chaves, senhas e tokens vazados em todo o histórico do Git.
+# Procura chaves, senhas e tokens vazados em TODO o histórico do Git (a cada push).
 # Se achar algo: troque o segredo (não basta apagar o commit).
 on:
   push:
@@ -14,6 +14,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # CLI em vez da action: a action varre só o intervalo do push e quebra no primeiro push de um repositório novo
+      - name: gitleaks (histórico completo)
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz | tar xz gitleaks
+          ./gitleaks git . --config .gitleaks.toml --redact --no-banner -v
