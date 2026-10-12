@@ -50,12 +50,16 @@ CREATE TABLE users (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name        text NOT NULL CHECK (length(btrim(name)) BETWEEN 1 AND 100),
   email       text NOT NULL CHECK (email = lower(btrim(email)) AND email LIKE '%_@_%' AND length(email) <= 254),
+  -- conta de "experimentar sem cadastro": apagada (com o workspace dela) depois desse horário
+  demo_expires_at timestamptz,
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now(),
   deleted_at  timestamptz
 );
 -- e-mail único entre as contas ativas (normalizado em minúsculas pelo CHECK); serve também à busca no login
 CREATE UNIQUE INDEX users_email_key ON users (email) WHERE deleted_at IS NULL;
+-- limpeza das contas de demonstração vencidas
+CREATE INDEX users_demo_expires_idx ON users (demo_expires_at) WHERE demo_expires_at IS NOT NULL;
 
 CREATE TABLE user_passwords (
   -- CASCADE: a senha não existe sem o usuário. user_id é a própria chave (1:1).
@@ -406,7 +410,7 @@ END $$;
 -- Senha, 2FA e códigos de recuperação: nenhum acesso. O fluxo de login e de 2FA roda como motor_system.
 
 -- users: vê a si mesmo e os colegas de workspace; edita só o próprio perfil
-GRANT SELECT (id, name, email, created_at, updated_at, deleted_at), UPDATE (name) ON users TO motor_app;
+GRANT SELECT (id, name, email, demo_expires_at, created_at, updated_at, deleted_at), UPDATE (name) ON users TO motor_app;
 CREATE POLICY users_select ON users FOR SELECT TO motor_app
   USING (id = app_user_id() OR shares_workspace(id));
 CREATE POLICY users_update ON users FOR UPDATE TO motor_app
@@ -491,7 +495,7 @@ CREATE POLICY triggers_delete ON workflow_triggers FOR DELETE TO motor_app
   USING (my_role(workspace_id) >= 'editor');
 
 -- execuções: todos veem; editor roda manualmente e cancela. Quem processa a fila é o worker (motor_system).
-GRANT SELECT, INSERT (workspace_id, workflow_id, version_id, trigger, input, created_by),
+GRANT SELECT, INSERT (workspace_id, workflow_id, version_id, trigger, input, idempotency_key, created_by),
       UPDATE (status, finished_at, error, locked_until, locked_by)
   ON executions TO motor_app;
 CREATE POLICY executions_select ON executions FOR SELECT TO motor_app
