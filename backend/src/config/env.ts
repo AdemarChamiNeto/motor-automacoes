@@ -17,8 +17,8 @@ const schema = z.object({
     .string({ required_error: "defina ENCRYPTION_KEY (gere com: openssl rand -hex 32)" })
     .refine((s) => decodeKey(s) !== null, "ENCRYPTION_KEY deve ter 32 bytes: 64 caracteres hex (openssl rand -hex 32) ou base64 (o generateValue do Render)"),
   NODE_ENV: z.string().default("development"),
-  /** Endereço público do app, usado para montar a URL dos webhooks. */
-  PUBLIC_URL: z.string().url().default("http://localhost:3002"),
+  /** Endereço público (URL dos webhooks, links de convite, canonical). No Render vem sozinho de RENDER_EXTERNAL_URL. */
+  PUBLIC_URL: z.string().url().default(process.env.RENDER_EXTERNAL_URL ?? "http://localhost:3002"),
 });
 
 export type Env = z.infer<typeof schema>;

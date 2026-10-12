@@ -51,6 +51,11 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   if (type === "entity.too.large") return void res.status(413).json({ error: "Corpo da requisição grande demais" });
   if (type === "entity.parse.failed") return void res.status(400).json({ error: "JSON inválido" });
   if (err instanceof ZodError) return void res.status(400).json({ error: "Dados inválidos" });
+  // 4xx vindo de biblioteca (ex.: arquivo de /assets que não existe): é de quem pediu, não erro nosso
+  const libStatus = (err as { status?: unknown }).status;
+  if (typeof libStatus === "number" && libStatus >= 400 && libStatus < 500) {
+    return void res.status(libStatus).json({ error: libStatus === 404 ? "Não encontrado" : "Requisição inválida" });
+  }
   if (err instanceof QuotaError) {
     res.set("Retry-After", String(secondsUntilUtcMidnight()));
     return void res.status(429).json({ error: err.message });

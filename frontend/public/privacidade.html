@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacidade: Motor de Automações</title>
+    <meta name="description" content="Quais dados o Motor de Automações guarda, por quanto tempo, onde ficam e como são protegidos." />
+    <link rel="canonical" href="__PUBLIC_URL__/privacidade.html" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#5b4bdb" />
+    <style>
+      :root { color-scheme: light dark; --bg: #f4f5f7; --fg: #1c2230; --a: #5b4bdb; --card: #fff; --line: #dde1e7; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #0f1218; --fg: #e7e9ee; --a: #8b7dff; --card: #171b23; --line: #2d3442; } }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
+      main { max-width: 720px; margin: 0 auto; padding: 32px 16px 48px; }
+      h1 { font-size: 1.6rem; } h2 { font-size: 1.1rem; margin-top: 1.8em; }
+      a { color: var(--a); }
+      button { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: inherit; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p><a href="/">← Voltar ao Motor de Automações</a></p>
+      <h1>Privacidade</h1>
+      <p>O Motor de Automações é um projeto de portfólio. Ele guarda só o necessário para funcionar.</p>
+
+      <h2>O que é guardado</h2>
+      <ul>
+        <li><strong>Conta:</strong> nome, e-mail e a senha em forma de hash (bcrypt). A senha em si nunca é guardada. A conta de “experimentar sem cadastro” não pede nenhum dado e é apagada em 24 horas, com tudo o que foi criado nela.</li>
+        <li><strong>Fluxos e credenciais:</strong> o que você monta no editor. Os segredos das credenciais (URL de webhook, token de bot, chave de API) ficam criptografados com AES-256-GCM e nunca são mostrados de novo depois de salvos.</li>
+        <li><strong>Histórico de execuções:</strong> o que cada fluxo recebeu e mandou. Pode ter dados enviados ao webhook por sistemas de fora. <strong>Apagado automaticamente depois de 30 dias.</strong></li>
+        <li><strong>Verificação em duas etapas</strong> (se você ativar): o segredo do app autenticador, criptografado, e os códigos de recuperação, só como hash.</li>
+      </ul>
+      <p>Os dados ficam num banco PostgreSQL hospedado no Neon e o app roda no Render. A conexão é sempre por HTTPS.</p>
+
+      <h2>Cookies</h2>
+      <ul>
+        <li><strong>Sessão (necessário):</strong> um cookie <code>httpOnly</code> que mantém você logado por 7 dias.</li>
+        <li><strong>Estatísticas (opcional):</strong> se aparecer um aviso de cookies, o site está configurado com o Google Analytics 4 e/ou o Microsoft Clarity. Eles só carregam se você clicar em <em>Aceitar</em>. Nome, e-mail e o conteúdo dos fluxos não são enviados.</li>
+      </ul>
+      <p><button type="button" id="rever">Rever minha escolha de cookies</button> <span id="ok" role="status"></span></p>
+
+      <h2>Excluir os seus dados</h2>
+      <p>Para apagar a sua conta e os workspaces dela, fale com o autor pelo <a href="https://github.com/AdemarChamiNeto">GitHub</a>.</p>
+    </main>
+    <script src="/privacidade.js"></script>
+  </body>
+</html>

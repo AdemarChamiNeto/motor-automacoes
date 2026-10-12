@@ -1,5 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
 import express from "express";
 import compression from "compression";
 import helmet from "helmet";
@@ -14,6 +12,7 @@ import { workflowsRouter } from "./routes/workflows.js";
 import { invitesRouter, workspacesRouter } from "./routes/workspaces.js";
 import { loadWorkspace } from "./workspace-access.js";
 import { requireAuth } from "./session.js";
+import { serveSite } from "./site.js";
 
 export type AppOptions = {
   /** Chamado quando o próprio processo enfileira algo: acorda o worker sem esperar o polling. */
@@ -56,14 +55,8 @@ export function createApp(opts: AppOptions = {}) {
   app.use("/api/workspaces", workspacesRouter());
   app.use("/api", (_req, res) => void res.status(404).json({ error: "Rota não encontrada" }));
 
-  // Em produção (serviço único) a API também entrega o front compilado (SPA).
-  const staticDir = opts.staticDir;
-  if (staticDir && fs.existsSync(path.join(staticDir, "index.html"))) {
-    app.use(express.static(staticDir, { maxAge: "1h", index: false }));
-    const index = path.resolve(staticDir, "index.html");
-    // rotas do front: index.html; arquivo com extensão que não existe: 404 de verdade
-    app.get(/^\/(?!.*\.[a-z0-9]+$).*/i, (_req, res) => res.sendFile(index));
-  }
+  // Em produção (serviço único) a API também entrega o front compilado.
+  if (opts.staticDir) serveSite(app, opts.staticDir);
 
   app.use(errorHandler);
   return app;

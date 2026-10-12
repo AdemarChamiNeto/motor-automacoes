@@ -1,0 +1,12 @@
+# Regras padrão do gitleaks + exceções só para valores fictícios conhecidos (testes e exemplo).
+# Qualquer outro valor parecido com segredo continua sendo apontado.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Senha dos testes e valor de exemplo do .env.example (não são segredos)"
+regexTarget = "secret"
+regexes = [
+  '''^senha-forte-123$''',
+  '''^troque-por-um-valor-aleatorio-de-32-caracteres-ou-mais$''',
+]

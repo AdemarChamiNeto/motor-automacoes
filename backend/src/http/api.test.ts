@@ -356,6 +356,39 @@ test("cabeçalhos de segurança, 404 em JSON e cookie de sessão httpOnly", asyn
   assert.equal(h.headers.get("x-powered-by"), null);
 });
 
+test("site: endereço real nas metatags, robots/sitemap/llms, noindex na área logada e 404 de verdade", async () => {
+  const dir = fs.mkdtempSync(path.join(process.env.TEMP ?? "/tmp", "motor-site-"));
+  fs.writeFileSync(path.join(dir, "index.html"), '<html><head><link rel="canonical" href="__PUBLIC_URL__/entrar"></head><body>app</body></html>');
+  fs.writeFileSync(path.join(dir, "404.html"), "<h1>Página não encontrada</h1>");
+  process.env.PUBLIC_URL = "https://motor.exemplo.com";
+  const app = createApp({ staticDir: dir }).listen(0);
+  const base = `http://127.0.0.1:${(app.address() as AddressInfo).port}`;
+  try {
+    const entrar = await fetch(`${base}/entrar`);
+    const html = await entrar.text();
+    assert.equal(entrar.status, 200);
+    assert.match(html, /href="https:\/\/motor\.exemplo\.com\/entrar"/);
+    assert.doesNotMatch(html, /noindex/);
+    const fluxo = await (await fetch(`${base}/w/${"0".repeat(8)}-0000-0000-0000-${"0".repeat(12)}/fluxos/${"1".repeat(8)}-1111-1111-1111-${"1".repeat(12)}`)).text();
+    assert.match(fluxo, /<meta name="robots" content="noindex"/);
+    const missing = await fetch(`${base}/nao-existe`);
+    assert.equal(missing.status, 404);
+    assert.match(await missing.text(), /Página não encontrada/);
+    assert.equal((await fetch(`${base}/w/nao-e-uuid`)).status, 404);
+    assert.equal((await fetch(`${base}/assets/nao-existe.js`)).status, 404); // e não 500
+    const robots = await (await fetch(`${base}/robots.txt`)).text();
+    assert.match(robots, /Disallow: \/api\//);
+    assert.match(robots, /Sitemap: https:\/\/motor\.exemplo\.com\/sitemap\.xml/);
+    assert.match(await (await fetch(`${base}/sitemap.xml`)).text(), /<loc>https:\/\/motor\.exemplo\.com\/entrar<\/loc>/);
+    assert.match(await (await fetch(`${base}/llms.txt`)).text(), /^# Motor de Automações/);
+    assert.equal((await fetch(`${base}/api/nao-existe`)).headers.get("content-type")?.includes("json"), true); // API continua JSON
+  } finally {
+    app.close();
+    delete process.env.PUBLIC_URL;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("OpenAPI: toda rota real está documentada (e nenhuma documentada some)", async () => {
   // rotas declaradas no código: r.get("/x"), one.post("/y")... com o prefixo de cada arquivo
   const prefixes: Record<string, string> = {

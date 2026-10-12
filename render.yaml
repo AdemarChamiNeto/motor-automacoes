@@ -1,0 +1,15 @@
+# Blueprint do Render: New + → Blueprint → escolha este repositório.
+services:
+  - type: web
+    name: motor-automacoes
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false # connection string DIRETA do Neon (sem "-pooler"), com ?sslmode=require
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ENCRYPTION_KEY # criptografa o 2FA e as credenciais das integrações (32 bytes aleatórios)
+        generateValue: true
