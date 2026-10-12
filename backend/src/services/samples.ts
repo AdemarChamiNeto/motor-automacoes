@@ -6,21 +6,21 @@
 export const SAMPLE_FLOWS = [
   {
     name: "Cotação do dólar",
-    description: "Busca a cotação na AwesomeAPI e avisa no Telegram quando passa do limite.",
+    description: "Busca a cotação do dólar (Frankfurter, taxas do Banco Central Europeu) e avisa no Telegram quando passa do limite.",
     draft: {
       nodes: [
         { id: "inicio", type: "trigger.manual", position: { x: 0, y: 120 }, data: {} },
         {
           id: "cotacao", type: "http", position: { x: 260, y: 120 },
-          data: { method: "GET", url: "https://economia.awesomeapi.com.br/json/last/USD-BRL", headers: [], timeoutMs: 8000, attempts: 3 },
+          data: { method: "GET", url: "https://api.frankfurter.dev/v1/latest?base=USD&symbols=BRL", headers: [], timeoutMs: 8000, attempts: 3 },
         },
         {
           id: "acima", type: "condition", position: { x: 540, y: 120 },
-          data: { left: "{{steps.cotacao.body.USDBRL.bid}}", operator: "gt", right: "4" },
+          data: { left: "{{steps.cotacao.body.rates.BRL}}", operator: "gt", right: "4" },
         },
         {
           id: "avisar", type: "notify.telegram", position: { x: 820, y: 40 },
-          data: { credentialId: null, chatId: "123456789", message: "Dólar a R$ {{steps.cotacao.body.USDBRL.bid}} ({{steps.cotacao.body.USDBRL.create_date}})", attempts: 3 },
+          data: { credentialId: null, chatId: "123456789", message: "Dólar a R$ {{steps.cotacao.body.rates.BRL}} (cotação de {{steps.cotacao.body.date}})", attempts: 3 },
         },
       ],
       edges: [

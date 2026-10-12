@@ -2,7 +2,7 @@
 
 Fluxos de automação visuais (gatilho → condição → chamada de API → aviso no Discord, Slack ou Telegram) **executados de verdade**: fila no PostgreSQL, novas tentativas automáticas, agendamento e histórico de cada passo.
 
-**Demo:** ainda não publicada (deploy no Render + Neon pronto no `render.yaml`). Para rodar agora, veja [Rodando](#rodando). Lá dá para clicar em **Experimentar sem cadastro**: a conta temporária, de 24 h, já vem com três fluxos de exemplo.
+**Demo:** [motor-automacoes.onrender.com](https://motor-automacoes.onrender.com/). Clique em **Experimentar sem cadastro**: a conta temporária, de 24 h, já vem com três fluxos de exemplo. Plano grátis do Render: a primeira visita depois de um tempo parado leva uns 30 s para acordar.
 
 <p>
   <img src="docs/editor.png" width="100%" alt="Editor visual com gatilho de webhook, condição com saídas sim/não, Discord e Slack, e o painel de configuração da condição">
@@ -21,7 +21,7 @@ Fluxos de automação visuais (gatilho → condição → chamada de API → avi
 
 - **Editor visual** em React Flow:
   - gatilho (webhook, agendamento com cron e fuso, ou manual), condição com saídas "sim" e "não", chamada HTTP e notificações no Discord, no Slack e no Telegram;
-  - variáveis entre os nós: `{{trigger.body.valor}}`, `{{steps.cotacao.body.USDBRL.bid}}`;
+  - variáveis entre os nós: `{{trigger.body.valor}}`, `{{steps.cotacao.body.rates.BRL}}`;
   - o editor não deixa criar ciclo nem ligar algo no gatilho, e os problemas que o servidor aponta aparecem no próprio nó.
 - **Rascunho e versões:**
   - "Salvar" guarda o rascunho; "Publicar" cria uma **versão imutável**, que é o que roda;
@@ -53,7 +53,7 @@ Fluxos de automação visuais (gatilho → condição → chamada de API → avi
   - **"Experimentar sem cadastro"**: conta de 24 h, sem pedir nenhum dado pessoal.
 - **Pronto para publicar:**
   - ícones, manifest, Open Graph, JSON-LD (`WebApplication`), robots, sitemap, `llms.txt`, privacidade e 404 de verdade;
-  - Lighthouse **99 / 100 / 100 / 100** na imagem de produção;
+  - Lighthouse **98 / 100 / 100 / 100** em produção;
   - GA4 e Clarity só carregam depois do aceite (e só se os IDs estiverem configurados).
 
 ## Arquitetura
@@ -104,6 +104,7 @@ frontend/src/
 
   A contagem da cota usa *advisory lock* por workspace, então pedidos simultâneos não passam juntos do limite.
 - **Token do webhook e do convite: só o hash fica no banco.** A URL aparece uma vez e pode ser trocada. O link de convite leva o token no fragmento (`/convite#…`), que o navegador não manda ao servidor nem no `Referer`.
+- **API de cotação trocada depois do deploy.** O exemplo usava a AwesomeAPI, que responde 429 para os IPs compartilhados do Render (do meu computador, 200). O próprio histórico mostrou isso: "HTTP 429 (serviço externo; vai tentar de novo)". O exemplo passou a usar a Frankfurter (taxas do Banco Central Europeu), testada a partir do Render.
 - **Worker no mesmo processo da API** (plano grátis do Render). A fila no banco já permite separar o worker num serviço próprio sem mudar código.
 
 Bugs que os testes de concorrência acharam (e como foram corrigidos) estão em [`docs/banco.md`](docs/banco.md).
