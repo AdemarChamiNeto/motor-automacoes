@@ -91,8 +91,8 @@ const notifyTelegram = z.object({
 
 export const AI_PROVIDERS = ["anthropic", "gemini"] as const;
 export type AiProvider = (typeof AI_PROVIDERS)[number];
-/** Modelo usado quando o nó não escolhe um: o mais barato e rápido de cada provedor. */
-export const DEFAULT_MODEL: Record<AiProvider, string> = { anthropic: "claude-haiku-5-5", gemini: "gemini-3.5-flash-lite" };
+/** Modelo usado quando o nó não escolhe um: barato e rápido. (Em 13/10/2026 o gemini-3.5-flash-lite levava ~40 s no plano grátis; o 3.1, ~2 s.) */
+export const DEFAULT_MODEL: Record<AiProvider, string> = { anthropic: "claude-haiku-5-5", gemini: "gemini-3.1-flash-lite" };
 /** A IA demora mais que uma API comum, mas fica bem abaixo do lease do worker (60 s). */
 export const MAX_AI_TIMEOUT_MS = 30_000;
 

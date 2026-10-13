@@ -78,7 +78,7 @@ export const credentialKindOf = (type: NodeType, config: Record<string, unknown>
   type === "ai" ? (config.provider === "anthropic" ? "anthropic_key" : "gemini_key") : CATALOG[type].credentialKind;
 
 export const AI_PROVIDERS = [
-  { value: "gemini", label: "Gemini", defaultModel: "gemini-3.5-flash-lite", models: ["gemini-3.5-flash-lite", "gemini-3.8-flash"] },
+  { value: "gemini", label: "Gemini", defaultModel: "gemini-3.1-flash-lite", models: ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.8-flash"] },
   { value: "anthropic", label: "Claude", defaultModel: "claude-haiku-5-5", models: ["claude-haiku-5-5", "claude-sonnet-5-5"] },
 ] as const;
 

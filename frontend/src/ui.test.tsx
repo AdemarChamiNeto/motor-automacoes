@@ -67,8 +67,18 @@ describe("painel do nó", () => {
     const select = screen.getByLabelText("Credencial") as HTMLSelectElement;
     expect([...select.options].map((o) => o.text)).toEqual(["Nenhuma (modo de teste)", "Gemini pessoal"]);
     expect(screen.queryByLabelText(/Categorias/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
     await userEvent.selectOptions(screen.getByLabelText("Provedor"), "anthropic");
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ provider: "anthropic", credentialId: null, model: "" }));
+  });
+
+  it("IA: com chave cadastrada mas não escolhida no nó, avisa que vai rodar em modo de teste", () => {
+    const keys: Credential[] = [{ id: "k1", kind: "gemini_key", name: "Gemini pessoal", createdBy: null, createdAt: "", updatedAt: "" }];
+    render(
+      <Inspector node={node("ai", { provider: "gemini", mode: "text", credentialId: null, instructions: "Resuma.", input: "" })} credentials={keys}
+        upstreamIds={[]} readOnly={false} onChange={vi.fn()} onChangeType={vi.fn()} onDelete={vi.fn()} />,
+    );
+    expect(screen.getByRole("note")).toHaveTextContent(/ainda está em modo de teste/);
   });
 
   it("corpo JSON inválido não é gravado; o válido é", async () => {

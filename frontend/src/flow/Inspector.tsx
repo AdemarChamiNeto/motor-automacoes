@@ -72,6 +72,26 @@ export function Inspector({ node, credentials, upstreamIds, readOnly, onChange, 
   const kind = credentialKindOf(type, c);
   const options = kind ? credentials.filter((x) => x.kind === kind) : [];
   const headers = (c.headers as { name: string; value: string }[] | undefined) ?? [];
+  // tem chave do tipo certo no workspace, mas o nó não aponta para ela: avisa (cadastrar não liga sozinho)
+  const testModeWithKey = kind && type !== "http" && !c.credentialId && options.length > 0;
+
+  const credentialField = kind && (
+    <>
+      <Field label={type === "http" ? "Credencial (opcional)" : "Credencial"}
+        hint={type === "http" ? "Adiciona o cabeçalho de autenticação guardado com criptografia."
+          : type === "ai" ? "Sem chave, o nó roda em modo de teste: o histórico mostra o que seria enviado, sem chamar a IA."
+          : "Sem credencial, o nó roda em modo de teste: a mensagem só aparece no histórico."}>
+        {(id) => (
+          <select id={id} value={str("credentialId")} onChange={(e) => set({ credentialId: e.target.value || null })}>
+            <option value="">{type === "http" ? "Nenhuma" : "Nenhuma (modo de teste)"}</option>
+            {options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+        )}
+      </Field>
+      {testModeWithKey && <p className="notice warn small" role="note">Este nó ainda está em modo de teste: escolha a credencial acima para ele rodar de verdade.</p>}
+      {options.length === 0 && <small className="muted">Nenhuma credencial do tipo “{CREDENTIAL_LABEL[kind]}” neste workspace ainda.</small>}
+    </>
+  );
 
   return (
     <aside className="inspector" aria-label="Configuração do nó">
@@ -186,6 +206,7 @@ export function Inspector({ node, credentials, upstreamIds, readOnly, onChange, 
                   )}
                 </Field>
               </div>
+              {credentialField}
               <Field label="Modelo" hint={`Vazio = ${provider.defaultModel} (o mais barato e rápido).`}>
                 {(id) => (
                   <>
@@ -227,20 +248,7 @@ export function Inspector({ node, credentials, upstreamIds, readOnly, onChange, 
           </Field>
         )}
 
-        {kind && (
-          <Field label={type === "http" ? "Credencial (opcional)" : "Credencial"}
-            hint={type === "http" ? "Adiciona o cabeçalho de autenticação guardado com criptografia."
-              : type === "ai" ? "Sem chave, o nó roda em modo de teste: o histórico mostra o que seria enviado, sem chamar a IA."
-              : "Sem credencial, o nó roda em modo de teste: a mensagem só aparece no histórico."}>
-            {(id) => (
-              <select id={id} value={str("credentialId")} onChange={(e) => set({ credentialId: e.target.value || null })}>
-                <option value="">{type === "http" ? "Nenhuma" : "Nenhuma (modo de teste)"}</option>
-                {options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-              </select>
-            )}
-          </Field>
-        )}
-        {kind && options.length === 0 && <small className="muted">Nenhuma credencial do tipo “{CREDENTIAL_LABEL[kind]}” neste workspace ainda.</small>}
+        {type !== "ai" && credentialField}
 
         {"attempts" in c || spec.credentialKind ? (
           <Field label="Tentativas" hint="Repete só falhas temporárias (timeout, 5xx, 429), com espera crescente. Erro 4xx não repete.">

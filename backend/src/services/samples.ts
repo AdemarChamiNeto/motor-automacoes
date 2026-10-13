@@ -68,7 +68,7 @@ export const SAMPLE_FLOWS = [
             provider: "gemini", model: "", credentialId: null, mode: "category",
             instructions: "Você faz a triagem de chamados de suporte de TI. Classifique a urgência: \"urgente\" se o sistema parou ou há muita gente afetada, \"normal\" se atrapalha mas tem contorno, \"baixa\" se é dúvida ou pedido.",
             input: "Título: {{trigger.body.titulo}}\nDescrição: {{trigger.body.descricao}}",
-            categories: ["urgente", "normal", "baixa"], maxTokens: 100, timeoutMs: 20000, attempts: 2,
+            categories: ["urgente", "normal", "baixa"], maxTokens: 100, timeoutMs: 20000, attempts: 3,
           },
         },
         {
@@ -80,7 +80,7 @@ export const SAMPLE_FLOWS = [
           data: {
             provider: "gemini", model: "", credentialId: null, mode: "text",
             instructions: "Resuma o chamado em uma frase curta, dizendo o que parou e quem está afetado.",
-            input: "{{trigger.body.descricao}}", categories: [], maxTokens: 150, timeoutMs: 20000, attempts: 2,
+            input: "{{trigger.body.descricao}}", categories: [], maxTokens: 150, timeoutMs: 20000, attempts: 3,
           },
         },
         {

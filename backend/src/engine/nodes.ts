@@ -57,7 +57,7 @@ async function call(deps: NodeDeps, req: Parameters<HttpClient>[0], label: strin
     const retryAfter = parseRetryAfter(res.headers["retry-after"] ?? null, deps.now())
       ?? (telegramWait ? telegramWait * 1000 : undefined)
       ?? googleRetryDelayMs(res.body);
-    throw new StepError(`${label}: HTTP ${res.status} (serviço externo; vai tentar de novo)`, true, retryAfter, output);
+    throw new StepError(`${label}: HTTP ${res.status} (falha temporária do serviço externo)`, true, retryAfter, output);
   }
   throw new StepError(`${label}: HTTP ${res.status} (confira a configuração do nó)`, false, undefined, output);
 }
