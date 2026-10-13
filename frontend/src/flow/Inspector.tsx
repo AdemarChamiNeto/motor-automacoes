@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import type { Credential, NodeType } from "../api";
-import { CATALOG, CREDENTIAL_LABEL, isTrigger, OPERATORS, TRIGGER_TYPES } from "./catalog";
+import { AI_PROVIDERS, CATALOG, CREDENTIAL_LABEL, credentialKindOf, isTrigger, OPERATORS, TRIGGER_TYPES } from "./catalog";
 import type { RFNode } from "./convert";
 
 type Props = {
@@ -49,12 +49,27 @@ function JsonBody({ value, onChange, readOnly }: { value: unknown; onChange: (v:
   );
 }
 
+/** Categorias, uma por linha: edita como texto e grava a lista sem linhas vazias. */
+function Categories({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const [text, setText] = useState(() => value.join("\n"));
+  return (
+    <Field label="Categorias (uma por linha)" hint="A IA é obrigada a responder uma delas. Use na condição: {{steps.ID.category}} é igual a urgente.">
+      {(id) => (
+        <textarea id={id} rows={4} value={text} onChange={(e) => {
+          setText(e.target.value);
+          onChange(e.target.value.split("\n").map((s) => s.trim()).filter(Boolean));
+        }} />
+      )}
+    </Field>
+  );
+}
+
 export function Inspector({ node, credentials, upstreamIds, readOnly, onChange, onChangeType, onDelete }: Props) {
   const { type, config: c } = node.data;
   const spec = CATALOG[type];
   const set = (patch: Record<string, unknown>) => onChange({ ...c, ...patch });
   const str = (k: string) => String(c[k] ?? "");
-  const kind = spec.credentialKind;
+  const kind = credentialKindOf(type, c);
   const options = kind ? credentials.filter((x) => x.kind === kind) : [];
   const headers = (c.headers as { name: string; value: string }[] | undefined) ?? [];
 
@@ -148,6 +163,58 @@ export function Inspector({ node, credentials, upstreamIds, readOnly, onChange, 
           </>
         )}
 
+        {type === "ai" && (() => {
+          const provider = AI_PROVIDERS.find((p) => p.value === c.provider) ?? AI_PROVIDERS[0];
+          const listId = `modelos-${node.id}`;
+          return (
+            <>
+              <div className="row">
+                <Field label="Provedor">
+                  {(id) => (
+                    // trocar de provedor solta a credencial: a chave de um não serve no outro
+                    <select id={id} value={provider.value} onChange={(e) => set({ provider: e.target.value, model: "", credentialId: null })}>
+                      {AI_PROVIDERS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                    </select>
+                  )}
+                </Field>
+                <Field label="Modo">
+                  {(id) => (
+                    <select id={id} value={str("mode") || "text"} onChange={(e) => set({ mode: e.target.value })}>
+                      <option value="text">Texto</option>
+                      <option value="category">Categoria</option>
+                    </select>
+                  )}
+                </Field>
+              </div>
+              <Field label="Modelo" hint={`Vazio = ${provider.defaultModel} (o mais barato e rápido).`}>
+                {(id) => (
+                  <>
+                    <input id={id} className="mono" list={listId} placeholder={provider.defaultModel} value={str("model")} onChange={(e) => set({ model: e.target.value.trim() })} />
+                    <datalist id={listId}>{provider.models.map((m) => <option key={m} value={m} />)}</datalist>
+                  </>
+                )}
+              </Field>
+              <Field label="Instruções" hint="O que a IA deve fazer. Texto fixo: aqui as {{variáveis}} não são trocadas, para que dados de fora não virem ordens.">
+                {(id) => <textarea id={id} rows={4} value={str("instructions")} onChange={(e) => set({ instructions: e.target.value })} />}
+              </Field>
+              <Field label="Dados para analisar" hint="Com variáveis, ex.: {{trigger.body.mensagem}}. Vão separados das instruções e a IA é avisada para não obedecer ao que estiver neles.">
+                {(id) => <textarea id={id} rows={3} className="mono" value={str("input")} onChange={(e) => set({ input: e.target.value })} />}
+              </Field>
+              {c.mode === "category" && (
+                <Categories key={node.id} value={(c.categories as string[] | undefined) ?? []} onChange={(categories) => set({ categories })} />
+              )}
+              <div className="row">
+                <Field label="Limite de tokens">
+                  {(id) => <input id={id} type="number" min={50} max={1000} step={50} value={Number(c.maxTokens ?? 400)} onChange={(e) => set({ maxTokens: Number(e.target.value) })} />}
+                </Field>
+                <Field label="Tempo limite (ms)">
+                  {(id) => <input id={id} type="number" min={1000} max={30000} step={1000} value={Number(c.timeoutMs ?? 20000)} onChange={(e) => set({ timeoutMs: Number(e.target.value) })} />}
+                </Field>
+              </div>
+            </>
+          );
+        })()}
+
         {type === "notify.telegram" && (
           <Field label="Chat ID" hint="Número do chat (fale com o bot e use o getUpdates) ou @canal">
             {(id) => <input id={id} className="mono" value={str("chatId")} onChange={(e) => set({ chatId: e.target.value })} />}
@@ -162,7 +229,9 @@ export function Inspector({ node, credentials, upstreamIds, readOnly, onChange, 
 
         {kind && (
           <Field label={type === "http" ? "Credencial (opcional)" : "Credencial"}
-            hint={type === "http" ? "Adiciona o cabeçalho de autenticação guardado com criptografia." : "Sem credencial, o nó roda em modo de teste: a mensagem só aparece no histórico."}>
+            hint={type === "http" ? "Adiciona o cabeçalho de autenticação guardado com criptografia."
+              : type === "ai" ? "Sem chave, o nó roda em modo de teste: o histórico mostra o que seria enviado, sem chamar a IA."
+              : "Sem credencial, o nó roda em modo de teste: a mensagem só aparece no histórico."}>
             {(id) => (
               <select id={id} value={str("credentialId")} onChange={(e) => set({ credentialId: e.target.value || null })}>
                 <option value="">{type === "http" ? "Nenhuma" : "Nenhuma (modo de teste)"}</option>
@@ -190,7 +259,7 @@ export function Inspector({ node, credentials, upstreamIds, readOnly, onChange, 
           <li>{"{{trigger.body.…}}"} <span className="muted">corpo recebido (webhook / entrada do teste)</span></li>
           {type === "trigger.webhook" || upstreamIds.length ? <li>{"{{trigger.query.…}}"} <span className="muted">parâmetros da URL do webhook</span></li> : null}
           {upstreamIds.map((u) => (
-            <li key={u}>{`{{steps.${u}.…}}`} <span className="muted">saída do nó {u} (HTTP: .status, .body)</span></li>
+            <li key={u}>{`{{steps.${u}.…}}`} <span className="muted">saída do nó {u} (HTTP: .status, .body · IA: .text ou .category)</span></li>
           ))}
           <li>{"{{execution.id}}"} · {"{{workflow.name}}"}</li>
         </ul>

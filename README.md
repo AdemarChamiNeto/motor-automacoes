@@ -1,8 +1,8 @@
 # Motor de Automações
 
-Fluxos de automação visuais (gatilho → condição → chamada de API → aviso no Discord, Slack ou Telegram) **executados de verdade**: fila no PostgreSQL, novas tentativas automáticas, agendamento e histórico de cada passo.
+Fluxos de automação visuais (gatilho → condição → chamada de API → IA → aviso no Discord, Slack ou Telegram) **executados de verdade**: fila no PostgreSQL, novas tentativas automáticas, agendamento e histórico de cada passo.
 
-**Demo:** [motor-automacoes.onrender.com](https://motor-automacoes.onrender.com/). Clique em **Experimentar sem cadastro**: a conta temporária, de 24 h, já vem com três fluxos de exemplo. Plano grátis do Render: a primeira visita depois de um tempo parado leva uns 30 s para acordar.
+**Demo:** [motor-automacoes.onrender.com](https://motor-automacoes.onrender.com/). Clique em **Experimentar sem cadastro**: a conta temporária, de 24 h, já vem com quatro fluxos de exemplo. Plano grátis do Render: a primeira visita depois de um tempo parado leva uns 30 s para acordar.
 
 <p>
   <img src="docs/editor.png" width="100%" alt="Editor visual com gatilho de webhook, condição com saídas sim/não, Discord e Slack, e o painel de configuração da condição">
@@ -20,9 +20,14 @@ Fluxos de automação visuais (gatilho → condição → chamada de API → avi
 ## Funcionalidades
 
 - **Editor visual** em React Flow:
-  - gatilho (webhook, agendamento com cron e fuso, ou manual), condição com saídas "sim" e "não", chamada HTTP e notificações no Discord, no Slack e no Telegram;
+  - gatilho (webhook, agendamento com cron e fuso, ou manual), condição com saídas "sim" e "não", chamada HTTP, **IA** e notificações no Discord, no Slack e no Telegram;
   - variáveis entre os nós: `{{trigger.body.valor}}`, `{{steps.cotacao.body.rates.BRL}}`;
   - o editor não deixa criar ciclo nem ligar algo no gatilho, e os problemas que o servidor aponta aparecem no próprio nó.
+- **Nó de IA (Claude ou Gemini):**
+  - modo **texto** (resumir, responder, traduzir: a saída vira `{{steps.ia.text}}`) e modo **categoria** (classifica entre opções da lista, como urgente/normal/baixa, e liga direto numa condição);
+  - no modo categoria o provedor é obrigado a responder por um JSON Schema com a lista, e o motor confere de novo;
+  - a chave é do usuário (credencial criptografada); sem chave, o nó roda em modo de teste e o histórico mostra o que seria enviado;
+  - o histórico guarda o modelo e os tokens usados em cada chamada.
 - **Rascunho e versões:**
   - "Salvar" guarda o rascunho; "Publicar" cria uma **versão imutável**, que é o que roda;
   - cada execução guarda a versão que rodou, então editar o fluxo no meio não muda o que já está na fila.
@@ -45,9 +50,9 @@ Fluxos de automação visuais (gatilho → condição → chamada de API → avi
   - papéis owner, editor e leitor;
   - convite por link (uso único, 7 dias) ou por e-mail;
   - o convite por e-mail responde igual com ou sem conta, então não revela quem está cadastrado.
-- **Credenciais** (webhook do Discord ou do Slack, token do bot do Telegram, cabeçalho de API):
+- **Credenciais** (webhook do Discord ou do Slack, token do bot do Telegram, cabeçalho de API, chave do Claude ou do Gemini):
   - ficam criptografadas com AES-256-GCM e **ninguém vê o segredo depois de salvo**, nem o owner;
-  - sem credencial, a notificação roda em modo de teste e a mensagem aparece só no histórico.
+  - sem credencial, a notificação (e a IA) roda em modo de teste e a mensagem aparece só no histórico.
 - **Conta:**
   - login com 2FA opcional (TOTP com QR code e códigos de recuperação);
   - **"Experimentar sem cadastro"**: conta de 24 h, sem pedir nenhum dado pessoal.
@@ -61,12 +66,14 @@ Fluxos de automação visuais (gatilho → condição → chamada de API → avi
 ```
 backend/
   migrations/001_inicial.sql   schema, RLS, papéis do banco, triggers (ver docs/banco.md)
+  migrations/002_credenciais_ia.sql  tipos de credencial das chaves de IA
   src/
     domain/        regras puras: definição do fluxo e validação do grafo, templates, condições, backoff, cron
     engine/
       queue.ts     fila na tabela executions: enfileirar (cota, idempotência), pegar (SKIP LOCKED), recuperar lease, agendador, limpeza
       worker.ts    roda uma execução passo a passo, com lease + fencing; retry por passo
-      nodes.ts     executores (HTTP, Discord, Slack, Telegram, condição) e classificação da falha
+      nodes.ts     executores (HTTP, IA, Discord, Slack, Telegram, condição) e classificação da falha
+      ai.ts        protocolo do Claude e do Gemini: prompt, schema da categoria, leitura da resposta
       safe-http.ts cliente HTTP com proteção contra SSRF
     services/      publicar (versão + gatilhos), workspaces, fluxos de exemplo, limpeza de contas demo
     http/          Express: auth, workspaces, convites, credenciais, fluxos, webhook, OpenAPI, site
@@ -105,6 +112,15 @@ frontend/src/
   A contagem da cota usa *advisory lock* por workspace, então pedidos simultâneos não passam juntos do limite.
 - **Token do webhook e do convite: só o hash fica no banco.** A URL aparece uma vez e pode ser trocada. O link de convite leva o token no fragmento (`/convite#…`), que o navegador não manda ao servidor nem no `Referer`.
 - **API de cotação trocada depois do deploy.** O exemplo usava a AwesomeAPI, que responde 429 para os IPs compartilhados do Render (do meu computador, 200). O próprio histórico mostrou isso: "HTTP 429 (serviço externo; vai tentar de novo)". O exemplo passou a usar a Frankfurter (taxas do Banco Central Europeu), testada a partir do Render.
+- **Nó de IA: as três perguntas antes de integrar.**
+  - *Como pode falhar?* Chave errada (401/403), modelo que não existe (404), cota estourada (429; o Google manda a espera no corpo, em `RetryInfo`), provedor sobrecarregado (529/503), resposta cortada pelo limite de tokens, recusa da IA, resposta fora da lista de categorias e **prompt injection** vindo do texto analisado.
+  - *De quem é a falha?* Chave, modelo e recusa são de quem configurou: falham sem nova tentativa e com a mensagem do provedor. 429, 5xx e timeout são do provedor: nova tentativa com espera (2 tentativas por padrão, porque cada uma é cobrada).
+  - *O que vamos esquecer?* A chave vai só no cabeçalho (nunca na URL nem no histórico); o tempo limite máximo (30 s) fica abaixo do lease do worker (60 s), senão outro worker pegaria a execução no meio da chamada; o texto enviado é cortado em 8.000 caracteres; o Gemini roda com `store: false` (o Google não guarda a conversa).
+- **Prompt injection: não dá para impedir, então o estrago é limitado.**
+  - As **instruções** são texto fixo de quem montou o fluxo (não aceitam `{{variáveis}}`) e vão no *system*. Os **dados** vão separados, entre `<dados></dados>`, com a marcação neutralizada dentro deles.
+  - A IA não tem ferramenta nenhuma: o pior que ela faz é devolver um texto ruim.
+  - No modo categoria, uma resposta fora da lista (ex.: "APROVADO") **falha o passo** em vez de seguir pelo fluxo.
+  - A saída da IA é tratada como dado de fora, igual ao corpo de um webhook. No Discord, as mensagens vão com `allowed_mentions` vazio: nenhum texto de fora consegue marcar `@everyone`.
 - **Worker no mesmo processo da API** (plano grátis do Render). A fila no banco já permite separar o worker num serviço próprio sem mudar código.
 
 Bugs que os testes de concorrência acharam (e como foram corrigidos) estão em [`docs/banco.md`](docs/banco.md).
@@ -131,8 +147,8 @@ curl -X POST "http://localhost:3002/hooks/SEU_TOKEN" -H "Content-Type: applicati
 ## Testes
 
 ```bash
-cd backend && npm test    # 51 testes contra PostgreSQL real (docker compose up -d db)
-cd frontend && npm test   # 14 testes (Vitest + Testing Library)
+cd backend && npm test    # 64 testes contra PostgreSQL real (docker compose up -d db)
+cd frontend && npm test   # 17 testes (Vitest + Testing Library)
 ```
 
 - **Motor:**
@@ -146,6 +162,12 @@ cd frontend && npm test   # 14 testes (Vitest + Testing Library)
   - cancelamento;
   - agendador com duas instâncias ao mesmo tempo;
   - bug interno com mensagem genérica.
+- **IA** (com o provedor simulado):
+  - formato da requisição de cada provedor (chave só no cabeçalho, schema da categoria, `store: false`);
+  - prompt injection: o dado não fecha a marcação e uma resposta fora da lista falha o passo;
+  - de quem é a falha: 401 sem nova tentativa, 529 e 429 com nova tentativa (e a espera do Google);
+  - recusa, resposta vazia, corte pelo limite de tokens e resposta em formato inesperado;
+  - chave do outro provedor recusada na publicação.
 - **RLS:**
   - consulta sem filtro só vê o próprio workspace;
   - sem usuário não vê nada;
@@ -172,7 +194,7 @@ cd frontend && npm test   # 14 testes (Vitest + Testing Library)
 - **Front:**
   - conversão definição ↔ React Flow e validação de conexões;
   - "voltar" do login contra open redirect;
-  - painel do nó (operadores, credencial do tipo certo, JSON inválido não é gravado, leitor só lê);
+  - painel do nó (operadores, credencial do tipo certo, chave do provedor escolhido na IA, JSON inválido não é gravado, leitor só lê);
   - consentimento LGPD.
 
 O CI roda typecheck, testes (com o banco criado por um dono sem superusuário), build e o build da imagem Docker a cada push, além do gitleaks em todo o histórico.

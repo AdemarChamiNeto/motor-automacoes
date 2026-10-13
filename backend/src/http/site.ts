@@ -43,7 +43,7 @@ export function serveSite(app: Express, staticDir: string) {
   app.get("/llms.txt", (_req, res) => {
     res.type("text/plain").send(`# Motor de Automações
 
-> Fluxos de automação visuais (webhook ou agendamento → condição → chamada HTTP → Discord, Slack ou Telegram) executados de verdade por uma fila no PostgreSQL, com novas tentativas automáticas e histórico de cada passo. Projeto de portfólio de Ademar C. Neto.
+> Fluxos de automação visuais (webhook ou agendamento → condição → chamada HTTP → IA com Claude ou Gemini → Discord, Slack ou Telegram) executados de verdade por uma fila no PostgreSQL, com novas tentativas automáticas e histórico de cada passo. Projeto de portfólio de Ademar C. Neto.
 
 - [Entrar ou experimentar sem cadastro](${base()}/entrar): conta de demonstração de 24 h com fluxos de exemplo
 - [Documentação da API (OpenAPI)](${base()}/api/docs/)

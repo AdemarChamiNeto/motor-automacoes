@@ -10,6 +10,8 @@ const HELP: Record<CredentialKind, string> = {
   slack_webhook: "No Slack: crie um app com Incoming Webhooks e copie a URL (https://hooks.slack.com/services/...).",
   telegram_bot: "Fale com o @BotFather no Telegram, use /newbot e cole o token que ele entrega.",
   http_header: "Para APIs com token: nome do cabeçalho (ex.: Authorization) e o valor (ex.: Bearer abc...).",
+  anthropic_key: "No console da Anthropic (platform.claude.com): API Keys → Create Key. A chave começa com sk-ant- e cada chamada é cobrada na sua conta.",
+  gemini_key: "No Google AI Studio (aistudio.google.com): Get API key → Create API key. Tem cota gratuita (no plano grátis o Google pode usar os dados para melhorar os modelos).",
 };
 
 export function Credentials() {
@@ -23,14 +25,18 @@ export function Credentials() {
   const [token, setToken] = useState("");
   const [header, setHeader] = useState("Authorization");
   const [value, setValue] = useState("");
+  const [key, setKey] = useState("");
 
   const secret = (): CredentialSecret =>
-    kind === "telegram_bot" ? { kind, token } : kind === "http_header" ? { kind, header, value } : { kind, url };
+    kind === "telegram_bot" ? { kind, token }
+      : kind === "http_header" ? { kind, header, value }
+      : kind === "anthropic_key" || kind === "gemini_key" ? { kind, key }
+      : { kind, url };
 
   const create = useMutation({
     mutationFn: () => api.createCredential(ws.id, name.trim(), secret()),
     onSuccess: () => {
-      setName(""); setUrl(""); setToken(""); setValue("");
+      setName(""); setUrl(""); setToken(""); setValue(""); setKey("");
       qc.invalidateQueries({ queryKey: ["credentials", ws.id] });
     },
   });
@@ -75,7 +81,7 @@ export function Credentials() {
                 ))}
               </tbody>
             </table></div>
-          ) : <p className="muted">Nenhuma ainda. Sem credencial, as notificações rodam em modo de teste.</p>}
+          ) : <p className="muted">Nenhuma ainda. Sem credencial, as notificações e a IA rodam em modo de teste.</p>}
           {remove.error && <p className="error" role="alert">{remove.error.message}</p>}
         </section>
 
@@ -109,7 +115,13 @@ export function Credentials() {
                 <input id="c-value" type="password" className="mono" value={value} onChange={(e) => setValue(e.target.value)} required autoComplete="off" />
               </>
             )}
-            {create.error && <p className="error" role="alert">{fieldError("url") ?? fieldError("token") ?? fieldError("header") ?? create.error.message}</p>}
+            {(kind === "anthropic_key" || kind === "gemini_key") && (
+              <>
+                <label htmlFor="c-key">Chave de API</label>
+                <input id="c-key" type="password" className="mono" value={key} onChange={(e) => setKey(e.target.value)} required autoComplete="off" />
+              </>
+            )}
+            {create.error && <p className="error" role="alert">{fieldError("url") ?? fieldError("token") ?? fieldError("header") ?? fieldError("key") ?? create.error.message}</p>}
             <button className="primary" disabled={create.isPending}>{create.isPending ? "Salvando…" : "Salvar credencial"}</button>
           </form>
         )}

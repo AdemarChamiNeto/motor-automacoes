@@ -29,11 +29,26 @@ const secretSchema = z.discriminatedUnion("kind", [
     header: z.string().regex(/^[A-Za-z0-9-]{1,64}$/, "nome de cabeçalho inválido"),
     value: z.string().min(1).max(2000),
   }),
+  z.object({
+    kind: z.literal("anthropic_key"),
+    key: z.string().trim().regex(/^sk-ant-[A-Za-z0-9_-]{20,300}$/, "chave da Anthropic inválida (começa com sk-ant-)"),
+  }),
+  z.object({
+    kind: z.literal("gemini_key"),
+    key: z.string().trim().regex(/^[A-Za-z0-9_-]{30,200}$/, "chave do Gemini inválida (copie do Google AI Studio)"),
+  }),
 ]);
 
 type Secret = z.infer<typeof secretSchema>;
-const toStored = (s: Secret) =>
-  s.kind === "http_header" ? JSON.stringify({ name: s.header, value: s.value }) : s.kind === "telegram_bot" ? s.token : s.url;
+const toStored = (s: Secret) => {
+  switch (s.kind) {
+    case "http_header": return JSON.stringify({ name: s.header, value: s.value });
+    case "telegram_bot": return s.token;
+    case "anthropic_key":
+    case "gemini_key": return s.key;
+    default: return s.url;
+  }
+};
 
 const name = z.string().trim().min(1).max(80);
 

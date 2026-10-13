@@ -15,6 +15,11 @@ export function summary(type: string, c: Record<string, unknown>): string {
       return `${String(c.left ?? "")} ${op?.label ?? ""}${op?.unary ? "" : ` ${String(c.right ?? "")}`}`;
     }
     case "http": return `${String(c.method ?? "GET")} ${String(c.url ?? "")}`;
+    case "ai": {
+      const who = c.provider === "anthropic" ? "Claude" : "Gemini";
+      const cats = (c.categories as string[] | undefined) ?? [];
+      return c.mode === "category" ? `${who} · categoria: ${cats.join(" / ") || "(sem categorias)"}` : `${who} · ${String(c.instructions ?? "")}`;
+    }
     default: return String(c.message ?? "") || "(sem mensagem)";
   }
 }

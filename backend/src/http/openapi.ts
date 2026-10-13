@@ -118,7 +118,7 @@ export const openapi = {
       get: op("Credenciais", "Credenciais (nunca devolve o segredo)", { 200: ok("Lista"), ...inWs }, { parameters: [wsParam] }),
       post: op("Credenciais", "Criar credencial (editor)", { 201: ok("Criada"), 409: err("Nome repetido ou limite"), ...inWs }, {
         parameters: [wsParam],
-        requestBody: body({ type: "object", properties: { name: { type: "string" }, secret: { type: "object", description: "{kind: discord_webhook|slack_webhook, url} · {kind: telegram_bot, token} · {kind: http_header, header, value}" } } }),
+        requestBody: body({ type: "object", properties: { name: { type: "string" }, secret: { type: "object", description: "{kind: discord_webhook|slack_webhook, url} · {kind: telegram_bot, token} · {kind: http_header, header, value} · {kind: anthropic_key|gemini_key, key}" } } }),
       }),
     },
     "/workspaces/{ws}/credentials/{id}": {

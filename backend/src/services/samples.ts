@@ -57,6 +57,46 @@ export const SAMPLE_FLOWS = [
     },
   },
   {
+    name: "Triagem de chamado com IA",
+    description: "Recebe chamados por webhook, a IA (Gemini ou Claude) classifica a urgência e os urgentes vão para o Discord com um resumo.",
+    draft: {
+      nodes: [
+        { id: "chamado", type: "trigger.webhook", position: { x: 0, y: 120 }, data: {} },
+        {
+          id: "triagem", type: "ai", position: { x: 270, y: 120 },
+          data: {
+            provider: "gemini", model: "", credentialId: null, mode: "category",
+            instructions: "Você faz a triagem de chamados de suporte de TI. Classifique a urgência: \"urgente\" se o sistema parou ou há muita gente afetada, \"normal\" se atrapalha mas tem contorno, \"baixa\" se é dúvida ou pedido.",
+            input: "Título: {{trigger.body.titulo}}\nDescrição: {{trigger.body.descricao}}",
+            categories: ["urgente", "normal", "baixa"], maxTokens: 100, timeoutMs: 20000, attempts: 2,
+          },
+        },
+        {
+          id: "eh_urgente", type: "condition", position: { x: 540, y: 120 },
+          data: { left: "{{steps.triagem.category}}", operator: "eq", right: "urgente" },
+        },
+        {
+          id: "resumo", type: "ai", position: { x: 810, y: 40 },
+          data: {
+            provider: "gemini", model: "", credentialId: null, mode: "text",
+            instructions: "Resuma o chamado em uma frase curta, dizendo o que parou e quem está afetado.",
+            input: "{{trigger.body.descricao}}", categories: [], maxTokens: 150, timeoutMs: 20000, attempts: 2,
+          },
+        },
+        {
+          id: "discord", type: "notify.discord", position: { x: 1080, y: 40 },
+          data: { credentialId: null, message: "🚨 Chamado urgente: {{trigger.body.titulo}}\n{{steps.resumo.text}}", attempts: 3 },
+        },
+      ],
+      edges: [
+        { id: "e1", source: "chamado", target: "triagem" },
+        { id: "e2", source: "triagem", target: "eh_urgente" },
+        { id: "e3", source: "eh_urgente", target: "resumo", sourceHandle: "true" },
+        { id: "e4", source: "resumo", target: "discord" },
+      ],
+    },
+  },
+  {
     name: "Monitor do GitHub",
     description: "De hora em hora consulta o status do GitHub e avisa no Slack se houver instabilidade.",
     draft: {

@@ -51,7 +51,7 @@ export type ExecStatus = "queued" | "running" | "succeeded" | "failed" | "cancel
 
 export type NodeType =
   | "trigger.webhook" | "trigger.schedule" | "trigger.manual"
-  | "condition" | "http" | "notify.discord" | "notify.slack" | "notify.telegram";
+  | "condition" | "http" | "ai" | "notify.discord" | "notify.slack" | "notify.telegram";
 export type FlowNode = { id: string; type: NodeType; position: { x: number; y: number }; data: Record<string, unknown> };
 export type FlowEdge = { id: string; source: string; target: string; sourceHandle?: "true" | "false" | null };
 export type Definition = { nodes: FlowNode[]; edges: FlowEdge[] };
@@ -75,12 +75,13 @@ export type Step = {
 };
 export type Execution = ExecutionSummary & { input: unknown; definition: Definition; steps: Step[] };
 
-export type CredentialKind = "discord_webhook" | "slack_webhook" | "telegram_bot" | "http_header";
+export type CredentialKind = "discord_webhook" | "slack_webhook" | "telegram_bot" | "http_header" | "anthropic_key" | "gemini_key";
 export type Credential = { id: string; kind: CredentialKind; name: string; createdBy: string | null; createdAt: string; updatedAt: string };
 export type CredentialSecret =
   | { kind: "discord_webhook" | "slack_webhook"; url: string }
   | { kind: "telegram_bot"; token: string }
-  | { kind: "http_header"; header: string; value: string };
+  | { kind: "http_header"; header: string; value: string }
+  | { kind: "anthropic_key" | "gemini_key"; key: string };
 
 export type Member = { id: string; name: string; email: string; role: Role; joinedAt: string };
 export type Invite = { id: string; role: Role; email: string | null; kind: "link" | "email"; expiresAt: string };

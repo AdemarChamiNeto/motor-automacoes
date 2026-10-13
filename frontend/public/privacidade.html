@@ -33,6 +33,7 @@
         <li><strong>Verificação em duas etapas</strong> (se você ativar): o segredo do app autenticador, criptografado, e os códigos de recuperação, só como hash.</li>
       </ul>
       <p>Os dados ficam num banco PostgreSQL hospedado no Neon e o app roda no Render. A conexão é sempre por HTTPS.</p>
+      <p><strong>Nó de IA:</strong> só quando você cadastra a sua própria chave do Claude (Anthropic) ou do Gemini (Google), o texto que o nó analisa é enviado para esse provedor, sob os termos da sua conta nele. Sem chave, o nó roda em modo de teste e nada sai do servidor. No Gemini, o pedido vai com <code>store: false</code>; no plano gratuito do Google, os dados podem ser usados para melhorar os modelos.</p>
 
       <h2>Cookies</h2>
       <ul>

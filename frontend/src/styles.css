@@ -20,6 +20,7 @@
   --g-logic: #c4630b;
   --g-action: #1570ef;
   --g-notify: #0e9384;
+  --g-ai: #c11574;
   --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08);
   --radius: 10px;
   color-scheme: light;
@@ -50,6 +51,7 @@
     --g-logic: #f79009;
     --g-action: #53b1fd;
     --g-notify: #2ed3b7;
+    --g-ai: #f670c7;
     --shadow: 0 1px 3px rgba(0, 0, 0, .5);
     color-scheme: dark;
   }
@@ -176,6 +178,7 @@ main:focus { outline: none; }
 .pal { justify-content: flex-start; border-left: 3px solid var(--g-action); }
 .pal.g-logic { border-left-color: var(--g-logic); }
 .pal.g-notify { border-left-color: var(--g-notify); }
+.pal.g-ai { border-left-color: var(--g-ai); }
 .canvas { position: relative; min-height: 320px; }
 .inspector { padding: 14px; border-left: 1px solid var(--border); background: var(--surface); overflow: auto; display: flex; flex-direction: column; gap: 10px; }
 .inspector header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -202,6 +205,7 @@ main:focus { outline: none; }
 .mnode.g-trigger { --c: var(--g-trigger); }
 .mnode.g-logic { --c: var(--g-logic); padding-right: 34px; }
 .mnode.g-notify { --c: var(--g-notify); }
+.mnode.g-ai { --c: var(--g-ai); }
 .mnode.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
 .mnode.has-problem { border-color: var(--bad); box-shadow: 0 0 0 2px var(--bad-soft); }
 .mnode-head { display: flex; align-items: center; gap: 6px; font-weight: 700; }
@@ -227,7 +231,7 @@ main:focus { outline: none; }
 .dialog::backdrop { background: rgba(0, 0, 0, .45); }
 
 /* ---------- histórico ---------- */
-.exec-layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+.exec-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start; }
 .exec-list ul { list-style: none; padding: 0; margin: 0 0 8px; display: flex; flex-direction: column; gap: 4px; }
 .exec-item { width: 100%; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; gap: 2px 8px; text-align: left; background: var(--surface); }
 .exec-item .muted { grid-column: 2; }
@@ -241,4 +245,4 @@ main:focus { outline: none; }
 .step-succeeded { border-left-color: var(--ok); }
 .step-failed { border-left-color: var(--bad); }
 .step summary { cursor: pointer; }
-@media (max-width: 900px) { .exec-layout { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .exec-layout { grid-template-columns: minmax(0, 1fr); } }

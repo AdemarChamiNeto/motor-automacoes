@@ -89,12 +89,54 @@ const notifyTelegram = z.object({
   }),
 });
 
+export const AI_PROVIDERS = ["anthropic", "gemini"] as const;
+export type AiProvider = (typeof AI_PROVIDERS)[number];
+/** Modelo usado quando o nó não escolhe um: o mais barato e rápido de cada provedor. */
+export const DEFAULT_MODEL: Record<AiProvider, string> = { anthropic: "claude-haiku-5-5", gemini: "gemini-3.5-flash-lite" };
+/** A IA demora mais que uma API comum, mas fica bem abaixo do lease do worker (60 s). */
+export const MAX_AI_TIMEOUT_MS = 30_000;
+
+const category = z.string().trim().min(1).max(40);
+
+const ai = z.object({
+  id,
+  type: z.literal("ai"),
+  position,
+  data: z
+    .object({
+      provider: z.enum(AI_PROVIDERS).default("gemini"),
+      /** Vazio = DEFAULT_MODEL do provedor. Formato livre (os provedores lançam modelos novos), mas sem espaço nem barra. */
+      model: z.string().regex(/^$|^[a-z0-9][a-z0-9.-]{1,63}$/, "nome de modelo inválido").default(""),
+      credentialId,
+      mode: z.enum(["text", "category"]).default("text"),
+      /** O que a IA deve fazer. Texto fixo de quem monta o fluxo: NÃO aceita {{variáveis}} (ver nodes.ts). */
+      instructions: z.string().trim().min(1, "escreva o que a IA deve fazer").max(2000),
+      /** Os dados que a IA analisa (ex.: {{trigger.body.mensagem}}). */
+      input: template(4000),
+      categories: z.array(category).max(10).default([]),
+      maxTokens: z.number().int().min(50).max(1000).default(400),
+      timeoutMs: z.number().int().min(1000).max(MAX_AI_TIMEOUT_MS).default(20_000),
+      // cada tentativa é cobrada pelo provedor: padrão menor que o das outras ações
+      attempts: attempts.default(2),
+    })
+    .superRefine((d, ctx) => {
+      if (d.mode !== "category") return;
+      if (d.categories.length < 2) ctx.addIssue({ code: "custom", path: ["categories"], message: "liste pelo menos 2 categorias" });
+      const seen = new Set<string>();
+      for (const c of d.categories) {
+        if (seen.has(c.toLowerCase())) ctx.addIssue({ code: "custom", path: ["categories"], message: `categoria "${c}" repetida` });
+        seen.add(c.toLowerCase());
+      }
+    }),
+});
+
 export const nodeSchema = z.discriminatedUnion("type", [
   triggerWebhook,
   triggerManual,
   triggerSchedule,
   condition,
   http,
+  ai,
   notifyWebhook("notify.discord"),
   notifyWebhook("notify.slack"),
   notifyTelegram,
@@ -119,12 +161,17 @@ export type NodeType = FlowNode["type"];
 export type Edge = z.infer<typeof edgeSchema>;
 
 export const isTrigger = (n: FlowNode) => n.type.startsWith("trigger.");
-export const credentialKindFor: Partial<Record<NodeType, string>> = {
-  http: "http_header",
-  "notify.discord": "discord_webhook",
-  "notify.slack": "slack_webhook",
-  "notify.telegram": "telegram_bot",
-};
+/** Tipo de credencial que o nó aceita (no nó de IA, depende do provedor escolhido). */
+export function credentialKindOf(n: FlowNode): string | undefined {
+  switch (n.type) {
+    case "http": return "http_header";
+    case "ai": return n.data.provider === "anthropic" ? "anthropic_key" : "gemini_key";
+    case "notify.discord": return "discord_webhook";
+    case "notify.slack": return "slack_webhook";
+    case "notify.telegram": return "telegram_bot";
+    default: return undefined;
+  }
+}
 
 export type Problem = { nodeId?: string; message: string };
 

@@ -134,7 +134,8 @@ test("falha de terceiro (503 e timeout) volta para a fila e, no retry, não repe
   // gatilho e condição rodaram uma vez só; o Discord recebeu UMA mensagem
   assert.equal(s.filter((x) => x.node_id === "grande").length, 1);
   assert.equal(http.calls.filter((c) => c.url.includes("discord")).length, 1);
-  assert.deepEqual(JSON.parse(http.calls.at(-1)!.body!), { content: "Pedido P-3 registrado: XYZ" });
+  // sem menções: texto de fora (webhook, IA) não consegue marcar @everyone
+  assert.deepEqual(JSON.parse(http.calls.at(-1)!.body!), { content: "Pedido P-3 registrado: XYZ", allowed_mentions: { parse: [] } });
   // o histórico não guarda a URL secreta do webhook
   assert.ok(!JSON.stringify(s).includes("discord.example"));
 });

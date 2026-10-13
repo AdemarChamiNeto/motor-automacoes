@@ -53,6 +53,24 @@ describe("painel do nó", () => {
     expect(screen.getByText(/{{steps.grande.…}}/)).toBeInTheDocument();
   });
 
+  it("IA: só oferece a chave do provedor escolhido e trocar de provedor solta a credencial", async () => {
+    const onChange = vi.fn();
+    const keys: Credential[] = [
+      ...creds,
+      { id: "k1", kind: "gemini_key", name: "Gemini pessoal", createdBy: null, createdAt: "", updatedAt: "" },
+      { id: "k2", kind: "anthropic_key", name: "Claude da empresa", createdBy: null, createdAt: "", updatedAt: "" },
+    ];
+    render(
+      <Inspector node={node("ai", { provider: "gemini", mode: "text", credentialId: "k1", instructions: "Resuma.", input: "" })} credentials={keys}
+        upstreamIds={[]} readOnly={false} onChange={onChange} onChangeType={vi.fn()} onDelete={vi.fn()} />,
+    );
+    const select = screen.getByLabelText("Credencial") as HTMLSelectElement;
+    expect([...select.options].map((o) => o.text)).toEqual(["Nenhuma (modo de teste)", "Gemini pessoal"]);
+    expect(screen.queryByLabelText(/Categorias/)).not.toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText("Provedor"), "anthropic");
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ provider: "anthropic", credentialId: null, model: "" }));
+  });
+
   it("corpo JSON inválido não é gravado; o válido é", async () => {
     const onChange = vi.fn();
     render(

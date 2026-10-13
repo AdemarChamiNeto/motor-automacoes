@@ -75,7 +75,7 @@ export function Login() {
       <section className="auth-pitch">
         <div className="brand big"><Icon name="flow" size={28} /> Motor de Automações</div>
         <h1>Monte fluxos que rodam de verdade.</h1>
-        <p>Webhook ou agendamento → condição → chamada de API → aviso no Discord, Slack ou Telegram. Com fila no PostgreSQL, novas tentativas automáticas e histórico de cada passo.</p>
+        <p>Webhook ou agendamento → condição → chamada de API → IA (Claude ou Gemini) → aviso no Discord, Slack ou Telegram. Com fila no PostgreSQL, novas tentativas automáticas e histórico de cada passo.</p>
         <button type="button" className="primary big" disabled={busy} onClick={() => void attempt(async () => done((await api.demo()).user))}>
           <Icon name="rocket" /> Experimentar sem cadastro
         </button>

@@ -49,7 +49,10 @@ export function Layout() {
             Conta de demonstração: tudo aqui some em {new Date(me.data.demoExpiresAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}.
           </p>
         )}
-        {ws && workspaces.data && !current ? <p className="error" role="alert">Workspace não encontrado.</p> : <Outlet context={current} />}
+        {/* página de workspace só monta com o workspace em mãos (ao recarregar direto num endereço /w/..., a lista ainda está chegando) */}
+        {ws && !workspaces.data ? (
+          workspaces.error ? <p className="error" role="alert">{workspaces.error.message}</p> : <p className="muted" role="status">Carregando…</p>
+        ) : ws && !current ? <p className="error" role="alert">Workspace não encontrado.</p> : <Outlet context={current} />}
       </main>
     </div>
   );

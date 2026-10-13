@@ -23,6 +23,7 @@ const P: Record<string, string> = {
   copy: "M8 8h12v12H8zM4 16V4h12",
   save: "M5 3h11l3 3v15H5zM8 3v6h8V3M8 21v-7h8v7",
   rocket: "M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2M9 15l-3-3c1-4 4-8 11-9 0 7-5 10-9 11l-3-3M15 9h.01",
+  sparkle: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3ZM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16Z",
 };
 
 export function Icon({ name, size = 18, title }: { name: keyof typeof P | string; size?: number; title?: string }) {
@@ -41,6 +42,7 @@ export const NODE_ICON: Record<NodeType, string> = {
   "trigger.manual": "play",
   condition: "branch",
   http: "globe",
+  ai: "sparkle",
   "notify.discord": "chat",
   "notify.slack": "hash",
   "notify.telegram": "send",

@@ -1,5 +1,5 @@
 import type { Db } from "../db/pool.js";
-import { credentialKindFor, triggerOf, validateDefinition, type Problem } from "../domain/definition.js";
+import { credentialKindOf, triggerOf, validateDefinition, type Problem } from "../domain/definition.js";
 import { nextRun } from "../domain/schedule.js";
 import { HttpError, notFound } from "../http/errors.js";
 import { randomToken, sha256 } from "../security/secrets.js";
@@ -36,7 +36,7 @@ export async function publishWorkflow(c: Db, workspaceId: string, workflowId: st
       [workspaceId, used.map((u) => u.id)],
     )).rows.map((r) => [r.id, r.kind]));
     const problems: Problem[] = used
-      .filter((u) => found.get(u.id) !== credentialKindFor[u.node.type])
+      .filter((u) => found.get(u.id) !== credentialKindOf(u.node))
       .map((u) => ({ nodeId: u.node.id, message: found.has(u.id) ? "credencial de outro tipo" : "credencial não existe mais" }));
     if (problems.length) throw new HttpError(422, "O fluxo tem problemas", problems);
   }

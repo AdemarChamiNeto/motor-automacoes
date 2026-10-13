@@ -1,10 +1,11 @@
 import { evaluate } from "../domain/condition.js";
-import type { FlowNode } from "../domain/definition.js";
+import { DEFAULT_MODEL, type FlowNode } from "../domain/definition.js";
 import { StepError, parseRetryAfter } from "../domain/retry.js";
 import { renderJson, renderText, renderValue, type Context } from "../domain/template.js";
+import { aiRequest, buildPrompt, googleRetryDelayMs, matchCategory, parseReply, providerMessage } from "./ai.js";
 import { HttpFailure, type HttpClient, type HttpResponse } from "./safe-http.js";
 
-export type CredentialKind = "discord_webhook" | "slack_webhook" | "telegram_bot" | "http_header";
+export type CredentialKind = "discord_webhook" | "slack_webhook" | "telegram_bot" | "http_header" | "anthropic_key" | "gemini_key";
 
 export type NodeDeps = {
   http: HttpClient;
@@ -53,7 +54,9 @@ async function call(deps: NodeDeps, req: Parameters<HttpClient>[0], label: strin
   const output = { status: res.status, body: res.body };
   if (res.status === 429 || res.status >= 500) {
     const telegramWait = (res.body as { parameters?: { retry_after?: number } } | null)?.parameters?.retry_after;
-    const retryAfter = parseRetryAfter(res.headers["retry-after"] ?? null, deps.now()) ?? (telegramWait ? telegramWait * 1000 : undefined);
+    const retryAfter = parseRetryAfter(res.headers["retry-after"] ?? null, deps.now())
+      ?? (telegramWait ? telegramWait * 1000 : undefined)
+      ?? googleRetryDelayMs(res.body);
     throw new StepError(`${label}: HTTP ${res.status} (serviço externo; vai tentar de novo)`, true, retryAfter, output);
   }
   throw new StepError(`${label}: HTTP ${res.status} (confira a configuração do nó)`, false, undefined, output);
@@ -111,6 +114,51 @@ export async function runNode(node: FlowNode, ctx: Context, deps: NodeDeps, meta
       }
     }
 
+    case "ai": {
+      const d = node.data;
+      const model = d.model || DEFAULT_MODEL[d.provider];
+      const label = d.provider === "anthropic" ? "Claude" : "Gemini";
+      // só os dados aceitam {{variáveis}}: as instruções ficam fixas (ver ai.ts)
+      const prompt = buildPrompt(d.instructions, renderText(d.input, ctx), d.mode, d.categories);
+      const input = {
+        provider: d.provider, model, mode: d.mode, instructions: d.instructions, data: prompt.data,
+        ...(d.mode === "category" ? { categories: d.categories } : {}),
+        ...(prompt.truncated ? { dataTruncated: true } : {}),
+      };
+      // sem credencial: modo de teste, não chama a IA (a demo pública não gasta a chave de ninguém)
+      if (!d.credentialId) {
+        return { input, output: { simulated: true, [d.mode === "category" ? "category" : "text"]: null, note: `modo de teste: cadastre uma chave do ${label} para a IA responder` } };
+      }
+      const key = await needCredential(deps, d.credentialId, d.provider === "anthropic" ? "anthropic_key" : "gemini_key");
+      let res: HttpResponse;
+      try {
+        res = await call(deps, aiRequest({ provider: d.provider, model, prompt, mode: d.mode, categories: d.categories, maxTokens: d.maxTokens, timeoutMs: d.timeoutMs }, key), label);
+      } catch (err) {
+        if (!(err instanceof StepError)) throw err;
+        // o corpo do erro do provedor diz o que houve ("model not found", "invalid x-api-key"); guarda só a mensagem
+        const status = (err.output as { status?: number } | undefined)?.status;
+        const msg = providerMessage((err.output as { body?: unknown } | undefined)?.body);
+        const hint = status === 401 || status === 403 ? " — chave inválida ou sem permissão: confira a credencial" : "";
+        throw Object.assign(
+          new StepError(`${err.message}${msg ? ` — ${msg}` : ""}${hint}`, err.retryable, err.retryAfterMs, status ? { status, error: msg } : undefined),
+          { input },
+        );
+      }
+      const reply = parseReply(d.provider, res.body);
+      const usage = reply.usage;
+      const fail = (message: string) => Object.assign(new StepError(`${label}: ${message}`, false, undefined, { text: reply.text.slice(0, 500), usage }), { input });
+      if (reply.stop === "refusal") throw fail("a IA se recusou a responder (confira as instruções e os dados)");
+      if (reply.stop === "empty") throw fail("a resposta veio vazia (o filtro de conteúdo do provedor pode ter barrado)");
+
+      if (d.mode === "category") {
+        if (reply.stop === "max_tokens") throw fail("a resposta foi cortada pelo limite de tokens: aumente o limite do nó");
+        const category = matchCategory(reply.text, d.categories);
+        if (!category) throw fail(`a IA respondeu "${reply.text.slice(0, 80)}", que não está na lista de categorias`);
+        return { input, output: { category, model, usage } };
+      }
+      return { input, output: { text: reply.text, model, usage, ...(reply.stop === "max_tokens" ? { truncated: true } : {}) } };
+    }
+
     case "notify.discord":
     case "notify.slack":
     case "notify.telegram": {
@@ -133,7 +181,10 @@ export async function runNode(node: FlowNode, ctx: Context, deps: NodeDeps, meta
       }
       const kind = node.type === "notify.discord" ? "discord_webhook" : "slack_webhook";
       const webhookUrl = await needCredential(deps, node.data.credentialId, kind);
-      const payload = node.type === "notify.discord" ? { content: message.slice(0, 2000) } : { text: message.slice(0, 3000) };
+      // a mensagem pode carregar texto de fora (webhook, resposta da IA): no Discord, nada de @everyone nem menção
+      const payload = node.type === "notify.discord"
+        ? { content: message.slice(0, 2000), allowed_mentions: { parse: [] } }
+        : { text: message.slice(0, 3000) };
       await call(deps, {
         method: "POST",
         url: webhookUrl,

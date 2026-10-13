@@ -91,7 +91,7 @@ test("cadastro cria o workspace pessoal com os fluxos de exemplo publicados; log
   assert.deepEqual(list.json.map((w: any) => [w.name, w.role]), [["Workspace de Bruno", "owner"]]);
   const flows = await c.get(`/workspaces/${ws}/workflows`);
   assert.deepEqual(flows.json.map((f: any) => [f.name, f.publishedVersion, f.isActive]), [
-    ["Cotação do dólar", 1, false], ["Monitor do GitHub", 1, false], ["Pedido grande", 1, false],
+    ["Cotação do dólar", 1, false], ["Monitor do GitHub", 1, false], ["Pedido grande", 1, false], ["Triagem de chamado com IA", 1, false],
   ]);
 
   assert.equal((await c.post("/auth/logout")).status, 204);
@@ -115,7 +115,7 @@ test("experimentar sem cadastro: conta temporária com fluxos e prazo de 24 h", 
   const hours = (new Date(r.json.user.demoExpiresAt).getTime() - Date.now()) / 3_600_000;
   assert.ok(hours > 23.9 && hours <= 24);
   const ws = (await c.get("/workspaces")).json[0].id;
-  assert.equal((await c.get(`/workspaces/${ws}/workflows`)).json.length, 3);
+  assert.equal((await c.get(`/workspaces/${ws}/workflows`)).json.length, 4);
 });
 
 test("do rascunho ao webhook: publicar, ativar, disparar, idempotência, desligar", async () => {
@@ -213,6 +213,32 @@ test("credenciais: formato validado por serviço e o segredo nunca volta", async
   assert.equal((await c.patch(`${base}/${ok.json.id}`, { secret: { kind: "slack_webhook", url: "https://hooks.slack.com/services/a" } })).status, 400);
   assert.equal((await c.del(`${base}/${ok.json.id}`)).status, 204);
   assert.equal((await c.get(base)).json.length, 0);
+});
+
+test("IA: chave validada por provedor e o nó só publica com a chave do provedor escolhido", async () => {
+  const { c, ws } = await signup();
+  const base = `/workspaces/${ws}/credentials`;
+  assert.equal((await c.post(base, { name: "x", secret: { kind: "anthropic_key", key: "AIzaNaoEhDaAnthropic000000000000000000" } })).status, 400);
+  assert.equal((await c.post(base, { name: "x", secret: { kind: "gemini_key", key: "curta" } })).status, 400);
+  const claude = await c.post(base, { name: "Claude", secret: { kind: "anthropic_key", key: "sk-ant-api03-chave-falsa-de-teste-0000000000" } });
+  assert.equal(claude.status, 201);
+  const gemini = await c.post(base, { name: "Gemini", secret: { kind: "gemini_key", key: "AIzaChaveFalsaDeTeste000000000000000000" } });
+  assert.equal(gemini.status, 201);
+  assert.equal(JSON.stringify((await c.get(base)).json).includes("sk-ant"), false);
+
+  const flow = (provider: string, credentialId: string) => ({
+    nodes: [
+      { id: "g", type: "trigger.manual", data: {} },
+      { id: "ia", type: "ai", data: { provider, credentialId, instructions: "Resuma.", input: "{{trigger.body.texto}}" } },
+    ],
+    edges: [{ id: "e", source: "g", target: "ia" }],
+  });
+  const errado = await c.post(`/workspaces/${ws}/workflows`, { name: "Claude com chave do Gemini", draft: flow("anthropic", gemini.json.id) });
+  const pub = await c.post(`/workspaces/${ws}/workflows/${errado.json.id}/publish`);
+  assert.equal(pub.status, 422);
+  assert.deepEqual(pub.json.details, [{ nodeId: "ia", message: "credencial de outro tipo" }]);
+  const certo = await c.post(`/workspaces/${ws}/workflows`, { name: "Claude", draft: flow("anthropic", claude.json.id) });
+  assert.equal((await c.post(`/workspaces/${ws}/workflows/${certo.json.id}/publish`)).status, 200);
 });
 
 test("papéis e isolamento: viewer só lê, quem não é membro recebe 404, id de outro workspace não vaza", async () => {
