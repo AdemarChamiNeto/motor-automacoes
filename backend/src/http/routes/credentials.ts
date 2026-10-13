@@ -35,7 +35,8 @@ const secretSchema = z.discriminatedUnion("kind", [
   }),
   z.object({
     kind: z.literal("gemini_key"),
-    key: z.string().trim().regex(/^[A-Za-z0-9_-]{30,200}$/, "chave do Gemini inválida (copie do Google AI Studio)"),
+    // formato antigo "AIza..." e o novo "AQ.<...>" (com ponto), que o AI Studio passou a gerar
+    key: z.string().trim().regex(/^[A-Za-z0-9._-]{30,300}$/, "chave do Gemini inválida (copie do Google AI Studio)"),
   }),
 ]);
 

@@ -224,6 +224,10 @@ test("IA: chave validada por provedor e o nó só publica com a chave do provedo
   assert.equal(claude.status, 201);
   const gemini = await c.post(base, { name: "Gemini", secret: { kind: "gemini_key", key: "AIzaChaveFalsaDeTeste000000000000000000" } });
   assert.equal(gemini.status, 201);
+  // formato novo do AI Studio (com ponto)
+  const novo = await c.post(base, { name: "Gemini novo", secret: { kind: "gemini_key", key: "AQ.Ab8RN6ChaveFalsaDeTesteNoFormatoNovo_0000-xyz" } });
+  assert.equal(novo.status, 201);
+  assert.equal((await c.post(base, { name: "x", secret: { kind: "gemini_key", key: "AQ.com espaço e quebra\nde linha 0000000000" } })).status, 400);
   assert.equal(JSON.stringify((await c.get(base)).json).includes("sk-ant"), false);
 
   const flow = (provider: string, credentialId: string) => ({
