@@ -218,11 +218,12 @@ test("credenciais: formato validado por serviço e o segredo nunca volta", async
 test("IA: chave validada por provedor e o nó só publica com a chave do provedor escolhido", async () => {
   const { c, ws } = await signup();
   const base = `/workspaces/${ws}/credentials`;
-  assert.equal((await c.post(base, { name: "x", secret: { kind: "anthropic_key", key: "AIzaNaoEhDaAnthropic000000000000000000" } })).status, 400);
+  assert.equal((await c.post(base, { name: "x", secret: { kind: "anthropic_key", key: "AIza" + "NaoEhDaAnthropic000000000000000000" } })).status, 400);
   assert.equal((await c.post(base, { name: "x", secret: { kind: "gemini_key", key: "curta" } })).status, 400);
   const claude = await c.post(base, { name: "Claude", secret: { kind: "anthropic_key", key: "sk-ant-api03-chave-falsa-de-teste-0000000000" } });
   assert.equal(claude.status, 201);
-  const gemini = await c.post(base, { name: "Gemini", secret: { kind: "gemini_key", key: "AIzaChaveFalsaDeTeste000000000000000000" } });
+  // montada em partes para o scanner de segredos do GitHub não confundir a chave fictícia com uma de verdade
+  const gemini = await c.post(base, { name: "Gemini", secret: { kind: "gemini_key", key: "AIza" + "ChaveFalsaDeTeste000000000000000000" } });
   assert.equal(gemini.status, 201);
   // formato novo do AI Studio (com ponto)
   const novo = await c.post(base, { name: "Gemini novo", secret: { kind: "gemini_key", key: "AQ.Ab8RN6ChaveFalsaDeTesteNoFormatoNovo_0000-xyz" } });
