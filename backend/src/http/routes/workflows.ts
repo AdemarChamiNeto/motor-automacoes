@@ -127,7 +127,7 @@ export function workflowsRouter(onEnqueue: () => void) {
 
   /** "Executar agora": roda a versão publicada com uma entrada de teste (mesmo desligado). */
   one.post("/run", need("editor"), async (req, res) => {
-    const p = parse(z.object({ input: z.record(z.unknown()).default({}) }).refine((v) => JSON.stringify(v).length <= 100_000, "entrada grande demais"), req.body ?? {});
+    const p = parse(z.object({ input: z.record(z.string(), z.unknown()).default({}) }).refine((v) => JSON.stringify(v).length <= 100_000, "entrada grande demais"), req.body ?? {});
     const exec = await asUser(res.locals.userId, async (c) => {
       const wf = (await c.query<{ published_version_id: string | null }>(
         "SELECT published_version_id FROM workflows WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL",

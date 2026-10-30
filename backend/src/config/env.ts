@@ -14,7 +14,7 @@ const schema = z.object({
   JWT_SECRET: z.string().min(32, "JWT_SECRET ausente ou curto (mínimo 32 caracteres)"),
   // uma chave só para o segredo do 2FA e para as credenciais das integrações
   ENCRYPTION_KEY: z
-    .string({ required_error: "defina ENCRYPTION_KEY (gere com: openssl rand -hex 32)" })
+    .string({ error: (i) => (i.input === undefined ? "defina ENCRYPTION_KEY (gere com: openssl rand -hex 32)" : undefined) })
     .refine((s) => decodeKey(s) !== null, "ENCRYPTION_KEY deve ter 32 bytes: 64 caracteres hex (openssl rand -hex 32) ou base64 (o generateValue do Render)"),
   NODE_ENV: z.string().default("development"),
   /** Endereço público (URL dos webhooks, links de convite, canonical). No Render vem sozinho de RENDER_EXTERNAL_URL. */

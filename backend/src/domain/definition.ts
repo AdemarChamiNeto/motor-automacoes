@@ -48,7 +48,7 @@ export const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 
 /** Corpo JSON com {{variáveis}} nas strings (sem limite de profundidade absurdo: o tamanho é limitado na serialização). */
 const jsonValue: z.ZodType<unknown> = z.lazy(() =>
-  z.union([z.string().max(2000), z.number().finite(), z.boolean(), z.null(), z.array(jsonValue).max(100), z.record(jsonValue)]),
+  z.union([z.string().max(2000), z.number().finite(), z.boolean(), z.null(), z.array(jsonValue).max(100), z.record(z.string(), jsonValue)]),
 );
 
 const http = z.object({
