@@ -1,0 +1,23 @@
+# Atualizações de dependências. As de segurança chegam assim que saem (alerta + PR do Dependabot);
+# as demais, uma vez por mês: menores e correções num PR só, versão maior em PR separado.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directories:
+      - "/backend"
+      - "/frontend"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      menores:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directories:
+      - "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      menores:
+        update-types: [minor, patch]
