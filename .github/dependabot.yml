@@ -9,6 +9,10 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 5
+    ignore:
+      # os tipos acompanham o Node do runtime (CI e Dockerfile), não a última versão
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       menores:
         update-types: [minor, patch]
